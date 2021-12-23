@@ -1,5 +1,4 @@
 import OSS from 'ali-oss/dist/aliyun-oss-sdk.min';
-import Promise from 'jraiser/promise/1.2/promise';
 import PubSub from 'jraiser/pubsub/1.2/pubsub';
 
 import {

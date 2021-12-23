@@ -1,4 +1,3 @@
-import Promise from 'jraiser/promise/1.2/promise';
 import PubSub from 'jraiser/pubsub/1.2/pubsub';
 
 import UploadManager from './upload';
