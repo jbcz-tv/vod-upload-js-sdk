@@ -82,7 +82,7 @@ export function initUpload(userData, fileData) {
     uploadType: 'js_sdk_chunk_v1',
     compatible: 1,
 
-    uploadLine: userData.region
+    uploadLine: userData.region,
   };
   const url = `//api.polyv.net/v2/uploadvideo/${userData.userid}/init`;
   return fetch(url, {
@@ -107,7 +107,7 @@ export function getToken(userData) {
       timestamp: userData.timestamp,
       sign: userData.sign,
       isSts: 'Y',
-      uploadLine: userData.region
+      uploadLine: userData.region,
     };
     const url = new URL('//api.polyv.net/inner/v3/upload/video/create-upload-token');
     Object.entries(data).forEach(([key, value]) => {
@@ -120,7 +120,7 @@ export function getToken(userData) {
     sign: userData.sign,
     hash: userData.hash,
     compatible: 1,
-    uploadLine: userData.region
+    uploadLine: userData.region,
   };
 
   const url = new URL(`//api.polyv.net/v2/uploadvideo/${userData.userid}/token`);
@@ -164,7 +164,9 @@ export function clearLocalFileInfo(key) {
 // 根据文件信息及用户信息对每个不同的文件生成具有一定长度的唯一标识
 function _generateFingerprint(fileData, userData) {
   const { cataid, file } = fileData;
-  return md5(`polyv-${userData.userid}-${cataid}-${file.name}-${file.type}-${file.size}`);
+  return md5(
+    `polyv-${userData.userid}-${cataid}-${file.name}-${file.type}-${file.size}`
+  );
 }
 
 /**
@@ -196,11 +198,14 @@ export function generateFileData(file, fileSetting, userData) {
     luping: 0,
     keepsource: 0,
     title: file.name.replace(/\.\w+$/, ''),
-    filename: file.name
+    filename: file.name,
   };
   for (const key in fileSetting) {
     if (key === 'title') {
-      if (typeof fileSetting.title !== 'string' || fileSetting.title.replace(/(^\s*)|(\s*$)/, '') === '') {
+      if (
+        typeof fileSetting.title !== 'string' ||
+        fileSetting.title.replace(/(^\s*)|(\s*$)/, '') === ''
+      ) {
         continue;
       }
       fileData.title = cleanStript(fileSetting.title);
@@ -208,10 +213,30 @@ export function generateFileData(file, fileSetting, userData) {
       fileData[key] = fileSetting[key];
     }
   }
-  Object.defineProperty(fileData, 'file', { value: file, writable: false, enumerable: false, configurable: false });
-  Object.defineProperty(fileData, 'size', { value: file.size, writable: false, enumerable: false, configurable: false });
-  Object.defineProperty(fileData, 'filesize', { value: file.size, writable: false, enumerable: false, configurable: false });
-  Object.defineProperty(fileData, 'id', { value: _generateFingerprint(fileData, userData), writable: false, enumerable: false, configurable: false });
+  Object.defineProperty(fileData, 'file', {
+    value: file,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  Object.defineProperty(fileData, 'size', {
+    value: file.size,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  Object.defineProperty(fileData, 'filesize', {
+    value: file.size,
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
+  Object.defineProperty(fileData, 'id', {
+    value: _generateFingerprint(fileData, userData),
+    writable: false,
+    enumerable: false,
+    configurable: false,
+  });
 
   return fileData;
 }
@@ -237,15 +262,20 @@ export function generateOssConfig(data) {
     accessKeySecret: data.accessKey,
     stsToken: data.token,
     secure: protocol === 'https:',
-    cname: true
+    cname: true,
   };
 }
 
 // 默认允许上传的文件类型
-const DEFAULT_ACCEPTED_MIME_TYPE = 'video/avi,.avi,.f4v,video/mpeg,.mpg,video/mp4,.mp4,video/x-flv,.flv,video/x-ms-wmv,.wmv,video/quicktime,.mov,video/3gpp,.3gp,.rmvb,video/x-matroska,.mkv,.asf,.264,.ts,.mts,.dat,.vob,audio/mpeg,.mp3,audio/x-wav,.wav,video/x-m4v,.m4v,video/webm,.webm,.mod';
+const DEFAULT_ACCEPTED_MIME_TYPE =
+  'video/avi,.avi,.f4v,video/mpeg,.mpg,video/mp4,.mp4,video/x-flv,.flv,video/x-ms-wmv,.wmv,video/quicktime,.mov,video/3gpp,.3gp,.rmvb,video/x-matroska,.mkv,.asf,.264,.ts,.mts,.dat,.vob,audio/mpeg,.mp3,audio/x-wav,.wav,video/x-m4v,.m4v,video/webm,.webm,.mod';
 function _isContainFileMimeType(file, acceptedMimeType) {
   const acceptedList = acceptedMimeType.split(',');
-  return acceptedList.indexOf(file.type) > -1 || acceptedList.indexOf(file.name.replace(/.+(\..+)$/, '$1').toLowerCase()) > -1;
+  return (
+    acceptedList.indexOf(file.type) > -1 ||
+    acceptedList.indexOf(file.name.replace(/.+(\..+)$/, '$1').toLowerCase()) >
+      -1
+  );
 }
 
 /**
@@ -255,8 +285,13 @@ function _isContainFileMimeType(file, acceptedMimeType) {
  * @returns {Boolean}
  */
 export function isContainFileMimeType(file, extraAcceptedMimeType) {
-  const isContainDefaultFileMimeType = _isContainFileMimeType(file, DEFAULT_ACCEPTED_MIME_TYPE);
+  const isContainDefaultFileMimeType = _isContainFileMimeType(
+    file,
+    DEFAULT_ACCEPTED_MIME_TYPE
+  );
   // 无论用户是否自定义了上传文件类型，都应该首先符合点播后台要求的上传文件类型
-  const isContainExtraFileMimeType = extraAcceptedMimeType ? _isContainFileMimeType(file, extraAcceptedMimeType) : true;
+  const isContainExtraFileMimeType = extraAcceptedMimeType ?
+    _isContainFileMimeType(file, extraAcceptedMimeType) :
+    true;
   return isContainDefaultFileMimeType && isContainExtraFileMimeType;
 }

@@ -1,4 +1,3 @@
-module.exports =
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -94,24 +93,260 @@ module.exports =
 
 var _interopRequireDefault = __webpack_require__(1);
 
+var _index = _interopRequireDefault(__webpack_require__(2));
+
+var $ = window.jQuery;
+var isSubAccount = false; // 测试子账号
+
+var getPolyvAuthorization = "/getToken?isSubAccount=" + (isSubAccount ? 'Y' : 'N');
+
+function transformSize(bytes) {
+  var bt = parseInt(bytes);
+  var result;
+
+  if (bt === 0) {
+    result = '0B';
+  } else {
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    var i = Math.floor(Math.log(bt) / Math.log(k));
+
+    if (typeof i !== 'number') {
+      result = '-';
+    } else {
+      result = (bt / Math.pow(k, i)).toFixed(2) + sizes[i];
+    }
+  }
+
+  return result;
+}
+
+function fileDom(uploader) {
+  return "<tr data-id=\"" + uploader.id + "\">\n    <td>" + uploader.fileData.title + "</td>\n    <td>" + uploader.id + "</td>\n    <td>" + transformSize(uploader.fileData.size) + "</td>\n    <td>\n      <div class=\"progress-wrap\"><div class=\"progress\"></div></div>\n      <input type=\"button\" value=\"\u5F00\u59CB\" class=\"js-fileStart\" />\n      <input type=\"button\" value=\"\u6682\u505C\" class=\"js-filePause\" />\n      <input type=\"button\" value=\"\u5220\u9664\" class=\"js-fileDelete\" />\n    </td>\n  </tr>";
+}
+
+function getUserData(videoUpload) {
+  $.ajax({
+    url: getPolyvAuthorization
+  }).done(function (data) {
+    var userData = isSubAccount ? {
+      appId: data.appId,
+      timestamp: data.timestamp,
+      sign: data.sign
+    } : {
+      userid: data.userid,
+      ptime: data.timestamp,
+      sign: data.sign,
+      hash: data.hash
+    };
+    videoUpload.updateUserData(userData);
+  });
+} // 由于sign等用户信息有效期为3分钟，需要每隔3分钟更新一次
+
+
+function autoUpdateUserData(timer, videoUpload) {
+  getUserData(videoUpload);
+
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+
+  timer = setTimeout(function () {
+    autoUpdateUserData(timer, videoUpload);
+  }, 3 * 50 * 1000);
+}
+
+var $uploadList = $('#uploadList');
+var videoUpload = new _index.default({
+  parallelFileLimit: 5,
+  events: {
+    UploadComplete: onUploadComplete,
+    Error: onError
+  },
+  region: 'line1'
+});
+autoUpdateUserData(null, videoUpload); // 事件回调
+
+function onUploadComplete() {
+  $('#progress').text('上传结束！'); // 获取上传文件列表
+
+  console.info('上传结束：', videoUpload.files);
+}
+
+function onError(err) {
+  console.info(err);
+
+  if (err.code) {
+    // 110：文件重复，111：拦截文件类型不在acceptedMimeType中的文件，102：用户剩余空间不足
+    var errMag = "\uFF08\u9519\u8BEF\u4EE3\u7801\uFF1A" + err.code + "\uFF09" + err.message;
+
+    if (err.code === 110 || err.code === 111) {
+      errMag += " " + err.data.filename;
+    }
+
+    alert(errMag);
+  } else {
+    console.info(err);
+  }
+}
+
+function onFileStarted(_ref) {
+  var uploaderid = _ref.uploaderid,
+      fileData = _ref.fileData;
+  console.info('开始上传', uploaderid, fileData);
+  $uploadList.find("[data-id=" + uploaderid + "] .progress").text('0.00%');
+}
+
+function onFileProgress(_ref2) {
+  var uploaderid = _ref2.uploaderid,
+      progress = _ref2.progress;
+  var p = (progress * 100).toFixed(2);
+  $uploadList.find("[data-id=" + uploaderid + "] .progress").css('min-width', p + "%").text(p + "%");
+}
+
+function onFileSucceed(_ref3) {
+  var uploaderid = _ref3.uploaderid,
+      fileData = _ref3.fileData;
+  console.info(fileData);
+  $uploadList.find("[data-id=" + uploaderid + "] .progress").css('min-width', '100%').text('上传完成');
+}
+
+function onFileFailed(_ref4) {
+  var uploaderid = _ref4.uploaderid,
+      errData = _ref4.errData;
+  console.info('上传失败：', errData);
+  $uploadList.find("[data-id=" + uploaderid + "] .progress").text('上传失败');
+}
+
+function onFileStopped(_ref5) {
+  var uploaderid = _ref5.uploaderid;
+  console.info('暂停上传 ' + uploaderid);
+  console.info(videoUpload);
+} // 添加文件到上传列表
+
+
+$('#select').on('change', function (e) {
+  var files = e.target.files;
+
+  if (!files || files.length <= 0) {
+    return;
+  }
+
+  $('#progress').text('');
+  $.makeArray(files).forEach(function (file) {
+    var fileSetting = {
+      desc: 'demo中设置的描述',
+      cataid: 1,
+      tag: 'demo中设置的标签',
+      luping: 0,
+      keepsource: 0,
+      title: '',
+      state: 'test'
+    }; // 添加文件到上传列表
+
+    var uploader = videoUpload.addFile(file, {
+      FileStarted: onFileStarted,
+      FileProgress: onFileProgress,
+      FileSucceed: onFileSucceed,
+      FileFailed: onFileFailed,
+      FileStopped: onFileStopped
+    }, fileSetting);
+
+    if (!uploader) {
+      return;
+    }
+
+    var uploaderid = uploader.id;
+    console.info(uploader);
+    var $fileDom = $(fileDom(uploader)); // 开始/恢复上传文件
+
+    $fileDom.find('.js-fileStart').on('click', function () {
+      videoUpload.resumeFile(uploaderid);
+    }); // 暂停上传文件
+
+    $fileDom.find('.js-filePause').on('click', function () {
+      videoUpload.stopFile(uploaderid);
+    }); // 删除文件
+
+    $fileDom.find('.js-fileDelete').on('click', function () {
+      videoUpload.removeFile(uploaderid);
+      $fileDom.remove();
+    });
+    $uploadList.append($fileDom);
+  });
+}); // 开始/恢复上传所有文件
+
+$('#start').on('click', function () {
+  if (videoUpload) {
+    videoUpload.startAll();
+  }
+}); // 暂停上传所有文件
+
+$('#pause').on('click', function () {
+  if (videoUpload) {
+    videoUpload.stopAll();
+  }
+}); // 清除所有文件
+
+$('#clear').on('click', function () {
+  if (videoUpload) {
+    videoUpload.clearAll();
+  }
+
+  document.getElementById('select').value = '';
+  $uploadList.html('');
+});
+$('#update').on('click', function () {
+  var fileSetting = {
+    title: $('#title').val()
+  };
+  console.info(fileSetting);
+  videoUpload.updateFileData($('#uploaderid').val(), fileSetting);
+});
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+function _interopRequireDefault(obj) {
+  return obj && obj.__esModule ? obj : {
+    "default": obj
+  };
+}
+
+module.exports = _interopRequireDefault;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _interopRequireDefault = __webpack_require__(1);
+
 exports.__esModule = true;
 exports.default = void 0;
 
-var _createClass2 = _interopRequireDefault(__webpack_require__(2));
+var _createClass2 = _interopRequireDefault(__webpack_require__(3));
 
-var _inheritsLoose2 = _interopRequireDefault(__webpack_require__(3));
+var _inheritsLoose2 = _interopRequireDefault(__webpack_require__(4));
 
-var _pubsub = _interopRequireDefault(__webpack_require__(4));
+var _pubsub = _interopRequireDefault(__webpack_require__(5));
 
-var _upload = _interopRequireDefault(__webpack_require__(7));
+var _upload = _interopRequireDefault(__webpack_require__(8));
 
-var _queue = __webpack_require__(15);
+var _queue = __webpack_require__(16);
 
-var _pool = __webpack_require__(16);
+var _pool = __webpack_require__(17);
 
-var _utils = __webpack_require__(13);
+var _utils = __webpack_require__(14);
 
-__webpack_require__(17);
+__webpack_require__(18);
 
 // 队列的上传状态
 var STATUS = {
@@ -632,22 +867,7 @@ var _default = PlvVideoUpload;
 exports.default = _default;
 
 /***/ }),
-/* 1 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-function _interopRequireDefault(obj) {
-  return obj && obj.__esModule ? obj : {
-    "default": obj
-  };
-}
-
-module.exports = _interopRequireDefault;
-
-/***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -672,7 +892,7 @@ function _createClass(Constructor, protoProps, staticProps) {
 module.exports = _createClass;
 
 /***/ }),
-/* 3 */
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -687,7 +907,7 @@ function _inheritsLoose(subClass, superClass) {
 module.exports = _inheritsLoose;
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -698,7 +918,7 @@ module.exports = _inheritsLoose;
  * @module pubsub/1.2/pubsub
  * @category Infrastructure
  */
-var EventArg = __webpack_require__(5);
+var EventArg = __webpack_require__(6);
 /**
  * 事件驱动机制。
  * @class PubSub
@@ -800,7 +1020,7 @@ module.exports = function (handlers) {
 };
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -812,7 +1032,7 @@ module.exports = function (handlers) {
  * @catgory Infrastructure
  * @ignore
  */
-var base = __webpack_require__(6);
+var base = __webpack_require__(7);
 
 function returnFalse() {
   return false;
@@ -875,7 +1095,7 @@ module.exports = base.createClass(function (type, props) {
 });
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1114,7 +1334,7 @@ exports.createClass = function (constructor, methods, Parent, parentArgs) {
 };
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1125,17 +1345,17 @@ var _interopRequireDefault = __webpack_require__(1);
 exports.__esModule = true;
 exports.default = void 0;
 
-var _regenerator = _interopRequireDefault(__webpack_require__(8));
+var _regenerator = _interopRequireDefault(__webpack_require__(9));
 
-var _asyncToGenerator2 = _interopRequireDefault(__webpack_require__(10));
+var _asyncToGenerator2 = _interopRequireDefault(__webpack_require__(11));
 
-var _inheritsLoose2 = _interopRequireDefault(__webpack_require__(3));
+var _inheritsLoose2 = _interopRequireDefault(__webpack_require__(4));
 
-var _aliyunOssSdk = _interopRequireDefault(__webpack_require__(11));
+var _aliyunOssSdk = _interopRequireDefault(__webpack_require__(12));
 
-var _pubsub = _interopRequireDefault(__webpack_require__(4));
+var _pubsub = _interopRequireDefault(__webpack_require__(5));
 
-var _utils = __webpack_require__(13);
+var _utils = __webpack_require__(14);
 
 var NET_ERR = '网络错误，请检查网络后重试';
 
@@ -1545,16 +1765,16 @@ var _default = UploadManager;
 exports.default = _default;
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-module.exports = __webpack_require__(9);
+module.exports = __webpack_require__(10);
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2267,7 +2487,7 @@ try {
 }
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2312,7 +2532,7 @@ function _asyncToGenerator(fn) {
 module.exports = _asyncToGenerator;
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16885,10 +17105,10 @@ module.exports = _asyncToGenerator;
     }]
   }, {}, [1])(1);
 });
-/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(12)))
+/* WEBPACK VAR INJECTION */}.call(this, __webpack_require__(13)))
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16914,7 +17134,7 @@ try {
 module.exports = g;
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -16934,7 +17154,7 @@ exports.generateFileData = generateFileData;
 exports.generateOssConfig = generateOssConfig;
 exports.isContainFileMimeType = isContainFileMimeType;
 
-var _md = _interopRequireDefault(__webpack_require__(14));
+var _md = _interopRequireDefault(__webpack_require__(15));
 
 /* eslint-disable sonarjs/no-duplicate-string */
 
@@ -17247,7 +17467,7 @@ function isContainFileMimeType(file, extraAcceptedMimeType) {
 }
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17514,7 +17734,7 @@ module.exports = function (str) {
 };
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17525,7 +17745,7 @@ var _interopRequireDefault = __webpack_require__(1);
 exports.__esModule = true;
 exports.Queue = void 0;
 
-var _createClass2 = _interopRequireDefault(__webpack_require__(2));
+var _createClass2 = _interopRequireDefault(__webpack_require__(3));
 
 var Queue =
 /*#__PURE__*/
@@ -17640,7 +17860,7 @@ function () {
 exports.Queue = Queue;
 
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17651,7 +17871,7 @@ var _interopRequireDefault = __webpack_require__(1);
 exports.__esModule = true;
 exports.Pool = void 0;
 
-var _createClass2 = _interopRequireDefault(__webpack_require__(2));
+var _createClass2 = _interopRequireDefault(__webpack_require__(3));
 
 // 列表类型
 var LIST_TYPE = {
@@ -17814,7 +18034,7 @@ function () {
 exports.Pool = Pool;
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -17824,12 +18044,12 @@ exports.Pool = Pool;
 // on the global object (window or self)
 //
 // Return that as the export for use in Webpack, Browserify etc.
-__webpack_require__(18);
+__webpack_require__(19);
 
 module.exports = self.fetch.bind(self);
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
