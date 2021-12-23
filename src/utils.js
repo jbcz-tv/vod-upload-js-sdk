@@ -1,10 +1,10 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 /**
  * 工具函数
  * @module utils
  * @ignore
  */
 
-import ajax from 'jraiser/ajax/1.5/ajax';
 import md5 from 'jraiser/crypto/1.1/md5';
 
 /**
@@ -55,7 +55,14 @@ export function initUpload(userData, fileData) {
       uploadType: 'js_sdk_chunk_v1',
     };
     const url = '//api.polyv.net/inner/v3/upload/video/create-upload-task';
-    return ajax.send(url, { method: 'POST', data: data });
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
   }
   const data = {
     ptime: userData.ptime,
@@ -78,7 +85,14 @@ export function initUpload(userData, fileData) {
     uploadLine: userData.region
   };
   const url = `//api.polyv.net/v2/uploadvideo/${userData.userid}/init`;
-  return ajax.send(url, { method: 'POST', data: data });
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
 }
 
 /**
@@ -95,8 +109,11 @@ export function getToken(userData) {
       isSts: 'Y',
       uploadLine: userData.region
     };
-    const url = '//api.polyv.net/inner/v3/upload/video/create-upload-token';
-    return ajax.send(url, { method: 'GET', data: data });
+    const url = new URL('//api.polyv.net/inner/v3/upload/video/create-upload-token');
+    Object.entries(data).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+    return fetch(url, { method: 'GET' });
   }
   const data = {
     ptime: userData.ptime,
@@ -105,8 +122,12 @@ export function getToken(userData) {
     compatible: 1,
     uploadLine: userData.region
   };
-  const url = `//api.polyv.net/v2/uploadvideo/${userData.userid}/token`;
-  return ajax.send(url, { method: 'GET', data: data });
+
+  const url = new URL(`//api.polyv.net/v2/uploadvideo/${userData.userid}/token`);
+  Object.entries(data).forEach(([key, value]) => {
+    url.searchParams.set(key, value);
+  });
+  return fetch(url, { method: 'GET' });
 }
 
 /**
