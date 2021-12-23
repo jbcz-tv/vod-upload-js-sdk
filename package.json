@@ -63,7 +63,8 @@
     "webpack-merge": "^4.1.5"
   },
   "dependencies": {
-    "@babel/runtime": "^7.6.3"
+    "@babel/runtime": "^7.6.3",
+    "isomorphic-fetch": "^3.0.0",
     "sass": "^1.45.1"
   }
 }
