@@ -7,6 +7,8 @@
 
 import md5 from 'jraiser/crypto/1.1/md5';
 
+import { fetch } from './fetch';
+
 /**
  * 动态计算合理的分片大小
  * @param {Number} fileSize 文件大小，单位为Bytes
