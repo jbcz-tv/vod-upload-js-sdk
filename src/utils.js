@@ -4,10 +4,12 @@
  * @module utils
  * @ignore
  */
+import isNode from 'is-node';
 
 import md5 from 'jraiser/crypto/1.1/md5';
 
 import { fetch } from './fetch';
+import { localStorage } from './localStorage';
 
 /**
  * 动态计算合理的分片大小
@@ -56,14 +58,16 @@ export function initUpload(userData, fileData) {
       isSts: 'Y',
       uploadType: 'js_sdk_chunk_v1',
     };
-    const url = '//api.polyv.net/inner/v3/upload/video/create-upload-task';
+    const url = 'https://api.polyv.net/inner/v3/upload/video/create-upload-task';
+    const postData = new URLSearchParams();
+
+    Object.entries(data).forEach(([key, value]) => {
+      value && postData.append(key, `${value}`);
+    });
+
     return fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(data),
+      body: postData,
     });
   }
   const data = {
@@ -86,14 +90,16 @@ export function initUpload(userData, fileData) {
 
     uploadLine: userData.region,
   };
-  const url = `//api.polyv.net/v2/uploadvideo/${userData.userid}/init`;
+  const url = `https://api.polyv.net/v2/uploadvideo/${userData.userid}/init`;
+  const postData = new URLSearchParams();
+
+  Object.entries(data).forEach(([key, value]) => {
+    postData.append(key, `${value}`);
+  });
+
   return fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(data),
+    body: postData,
   });
 }
 
@@ -111,7 +117,7 @@ export function getToken(userData) {
       isSts: 'Y',
       uploadLine: userData.region,
     };
-    const url = new URL('//api.polyv.net/inner/v3/upload/video/create-upload-token');
+    const url = new URL('https://api.polyv.net/inner/v3/upload/video/create-upload-token');
     Object.entries(data).forEach(([key, value]) => {
       url.searchParams.set(key, value);
     });
@@ -125,7 +131,7 @@ export function getToken(userData) {
     uploadLine: userData.region,
   };
 
-  const url = new URL(`//api.polyv.net/v2/uploadvideo/${userData.userid}/token`);
+  const url = new URL(`https://api.polyv.net/v2/uploadvideo/${userData.userid}/token`);
   Object.entries(data).forEach(([key, value]) => {
     url.searchParams.set(key, value);
   });
@@ -244,6 +250,10 @@ export function generateFileData(file, fileSetting, userData) {
 }
 
 function getAPIProtocol() {
+  if (isNode) {
+    return 'https:';
+  }
+
   if (window.location.protocol === 'http:') {
     return 'http:';
   }
